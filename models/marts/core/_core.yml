@@ -87,6 +87,9 @@ models:
     columns:
       - name: session_id
         data_tests: [unique, not_null]
+        entity:
+          type: primary
+          name: session
       - name: player_id
         data_tests:
           - not_null
@@ -94,6 +97,9 @@ models:
               arguments:
                 to: ref('dim_players')
                 field: player_id
+        entity:
+          type: foreign
+          name: player
       - name: title_id
         data_tests:
           - not_null
@@ -102,11 +108,61 @@ models:
                 to: ref('dim_titles')
                 field: title_id
 
+        entity:
+          type: foreign
+          name: title
+      - name: session_start_at
+        dimension:
+          type: time
+        granularity: day
+    semantic_model:
+      enabled: true
+    agg_time_dimension: session_start_at
+    metrics:
+      - name: cohort_players
+        type: simple
+        label: Cohort Players
+        agg: count_distinct
+        expr: "case when week_offset_from_registration = 0 then player_id end"
+      - name: week4_returned_players
+        type: simple
+        label: Week 4 Returned Players
+        agg: count_distinct
+        expr: "case when week_offset_from_registration = 4 then player_id end"
+      - name: monthly_active_players
+        type: simple
+        label: Monthly Active Players
+        agg: count_distinct
+        expr: player_id
+      - name: session_count
+        agg: count
+        expr: session_id
+        type: simple
+        hidden: true
+      - name: valid_session_count
+        agg: count
+        expr: "case when is_valid_session then session_id end"
+        type: simple
+        hidden: true
+      - name: play_minutes
+        agg: sum
+        expr: duration_minutes
+        type: simple
+        hidden: true
+      - name: week_4_retention
+        description: Share of a registration cohort still playing in week 4.
+        type: ratio
+        label: Week 4 Retention
+        numerator: week4_returned_players
+        denominator: cohort_players
   - name: fct_transactions
     description: One row per transaction.
     columns:
       - name: transaction_id
         data_tests: [unique, not_null]
+        entity:
+          type: primary
+          name: transaction
       - name: player_id
         data_tests:
           - not_null
@@ -114,6 +170,9 @@ models:
               arguments:
                 to: ref('dim_players')
                 field: player_id
+        entity:
+          type: foreign
+          name: player
       - name: title_id
         data_tests:
           - not_null
@@ -121,12 +180,49 @@ models:
               arguments:
                 to: ref('dim_titles')
                 field: title_id
+        entity:
+          type: foreign
+          name: title
       - name: transaction_type
         data_tests:
           - accepted_values:
               arguments:
                 values: ['premium_purchase', 'iap', 'season_pass', 'dlc', 'refund', 'chargeback']
 
+      - name: transaction_at
+        dimension:
+          type: time
+        granularity: day
+    semantic_model:
+      enabled: true
+    agg_time_dimension: transaction_at
+    metrics:
+      - name: net_revenue
+        type: simple
+        label: Net Revenue
+        agg: sum
+        expr: net_amount_usd
+      - name: paying_players
+        type: simple
+        label: Paying Players
+        agg: count_distinct
+        expr: "case when is_live_service_revenue then player_id end"
+      - name: gross_revenue
+        agg: sum
+        expr: gross_amount_usd
+        type: simple
+        hidden: true
+      - name: studio_net_revenue
+        agg: sum
+        expr: studio_net_revenue_usd
+        type: simple
+        hidden: true
+      - name: arppu
+        description: Average net revenue per paying player.
+        type: ratio
+        label: ARPPU
+        numerator: net_revenue
+        denominator: paying_players
   - name: fct_high_scores
     description: One row per leaderboard submission, ranked/percentiled excluding cheat-flagged rows.
     columns:
@@ -164,128 +260,3 @@ models:
           - accepted_values:
               arguments:
                 values: ['major', 'minor', 'hotfix', 'content_drop', 'event']
-
-semantic_models:
-  - name: fct_play_sessions
-    model: ref('fct_play_sessions')
-    defaults:
-      agg_time_dimension: session_start_at
-    entities:
-      - name: session
-        type: primary
-        expr: session_id
-      - name: player
-        type: foreign
-        expr: player_id
-      - name: title
-        type: foreign
-        expr: title_id
-    dimensions:
-      - name: session_start_at
-        type: time
-        type_params:
-          time_granularity: day
-    measures:
-      - name: session_count
-        agg: count
-        expr: session_id
-      - name: valid_session_count
-        agg: count
-        expr: "case when is_valid_session then session_id end"
-      - name: play_minutes
-        agg: sum
-        expr: duration_minutes
-      - name: monthly_active_players
-        agg: count_distinct
-        expr: player_id
-      - name: cohort_players
-        agg: count_distinct
-        expr: "case when week_offset_from_registration = 0 then player_id end"
-      - name: week4_returned_players
-        agg: count_distinct
-        expr: "case when week_offset_from_registration = 4 then player_id end"
-
-  - name: fct_transactions
-    model: ref('fct_transactions')
-    defaults:
-      agg_time_dimension: transaction_at
-    entities:
-      - name: transaction
-        type: primary
-        expr: transaction_id
-      - name: player
-        type: foreign
-        expr: player_id
-      - name: title
-        type: foreign
-        expr: title_id
-    dimensions:
-      - name: transaction_at
-        type: time
-        type_params:
-          time_granularity: day
-    measures:
-      - name: net_revenue
-        agg: sum
-        expr: net_amount_usd
-      - name: gross_revenue
-        agg: sum
-        expr: gross_amount_usd
-      - name: studio_net_revenue
-        agg: sum
-        expr: studio_net_revenue_usd
-      - name: paying_players
-        agg: count_distinct
-        expr: "case when is_live_service_revenue then player_id end"
-
-metrics:
-  # Ratio metric numerator/denominator reference other metrics, not measures
-  # directly -- these `simple` metrics just expose the underlying measure so
-  # the ratios below (and payer_conversion_rate in semantic/metrics.yml,
-  # which needs monthly_active_players and paying_players) have something to
-  # point at.
-  - name: cohort_players
-    type: simple
-    label: Cohort Players
-    type_params:
-      measure: cohort_players
-
-  - name: week4_returned_players
-    type: simple
-    label: Week 4 Returned Players
-    type_params:
-      measure: week4_returned_players
-
-  - name: monthly_active_players
-    type: simple
-    label: Monthly Active Players
-    type_params:
-      measure: monthly_active_players
-
-  - name: net_revenue
-    type: simple
-    label: Net Revenue
-    type_params:
-      measure: net_revenue
-
-  - name: paying_players
-    type: simple
-    label: Paying Players
-    type_params:
-      measure: paying_players
-
-  - name: week_4_retention
-    description: Share of a registration cohort still playing in week 4.
-    type: ratio
-    label: Week 4 Retention
-    type_params:
-      numerator: week4_returned_players
-      denominator: cohort_players
-
-  - name: arppu
-    description: Average net revenue per paying player.
-    type: ratio
-    label: ARPPU
-    type_params:
-      numerator: net_revenue
-      denominator: paying_players
