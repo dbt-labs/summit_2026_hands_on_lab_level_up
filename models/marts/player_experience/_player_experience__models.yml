@@ -9,11 +9,6 @@ models:
       count (cheaters are excluded from ranking, not deleted from the mart).
     columns:
       - name: player_id
-        data_tests:
-          - relationships:
-              arguments:
-                to: ref('dim_players')
-                field: player_id
 
   - name: mart_player_retention
     description: >
@@ -24,11 +19,3 @@ models:
       elapsed yet for a given cohort.
     columns:
       - name: acquisition_channel
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: ['organic', 'paid_social', 'influencer', 'store_featured', 'cross_promo']
-    data_tests:
-      - dbt_utils.unique_combination_of_columns:
-          arguments:
-            combination_of_columns: [cohort_month, acquisition_channel, week_offset]

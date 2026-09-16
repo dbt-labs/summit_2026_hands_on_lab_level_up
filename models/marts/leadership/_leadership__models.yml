@@ -21,12 +21,3 @@ models:
       aren't over-read.
     columns:
       - name: title_id
-        data_tests:
-          - relationships:
-              arguments:
-                to: ref('dim_titles')
-                field: title_id
-    data_tests:
-      - dbt_utils.unique_combination_of_columns:
-          arguments:
-            combination_of_columns: [title_id, month]

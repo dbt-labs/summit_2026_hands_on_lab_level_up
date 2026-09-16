@@ -16,6 +16,8 @@ clean-targets:
   - "dbt_packages"
 
 models:
+  +state:
+    lag_tolerance: "{{ '2m' }}"
   summit_2026_hands_on_lab:
     staging:
       +materialized: view

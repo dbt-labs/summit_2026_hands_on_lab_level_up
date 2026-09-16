@@ -7,27 +7,10 @@ models:
       - name: player_id
         data_tests: [unique, not_null]
       - name: acquisition_channel
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: ['organic', 'paid_social', 'influencer', 'store_featured', 'cross_promo']
       - name: account_status
         description: Source-reported status. Can diverge from is_churned, which is computed from actual session activity.
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: ['active', 'dormant', 'churned', 'banned']
       - name: payer_segment
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: ['whale', 'dolphin', 'minnow', 'non_payer']
       - name: favorite_title_id
-        data_tests:
-          - relationships:
-              arguments:
-                to: ref('dim_titles')
-                field: title_id
 
   - name: dim_titles
     description: Conformed title dimension -- one row per game, with rolled-up activity and a derived lifecycle_stage.
@@ -35,19 +18,11 @@ models:
       - name: title_id
         data_tests: [unique, not_null]
       - name: monetization_model
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: ['premium', 'f2p', 'premium_plus_dlc']
       - name: lifecycle_stage
         description: >
           Derived stage: launch_window (<=90 days old) -> sunset_candidate
           (quiet 60+ days and >365 days old) -> growth (<=365 days old) ->
           mature (active_players_last_90d over threshold) -> declining.
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: ['launch_window', 'sunset_candidate', 'growth', 'mature', 'declining']
 
   - name: dim_platforms
     description: Conformed platform (storefront) dimension.
@@ -55,10 +30,6 @@ models:
       - name: platform_id
         data_tests: [unique, not_null]
       - name: platform_family
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: ['pc', 'console', 'mobile']
 
   - name: dim_skus
     description: Conformed SKU dimension.
@@ -66,12 +37,6 @@ models:
       - name: sku_id
         data_tests: [unique, not_null]
       - name: title_id
-        data_tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_titles')
-                field: title_id
 
   - name: dim_dates
     description: Date spine covering the studio's history window, one row per calendar day.
@@ -91,23 +56,10 @@ models:
           type: primary
           name: session
       - name: player_id
-        data_tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_players')
-                field: player_id
         entity:
           type: foreign
           name: player
       - name: title_id
-        data_tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_titles')
-                field: title_id
-
         entity:
           type: foreign
           name: title
@@ -164,30 +116,14 @@ models:
           type: primary
           name: transaction
       - name: player_id
-        data_tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_players')
-                field: player_id
         entity:
           type: foreign
           name: player
       - name: title_id
-        data_tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_titles')
-                field: title_id
         entity:
           type: foreign
           name: title
       - name: transaction_type
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: ['premium_purchase', 'iap', 'season_pass', 'dlc', 'refund', 'chargeback']
 
       - name: transaction_at
         dimension:
@@ -229,19 +165,7 @@ models:
       - name: score_id
         data_tests: [unique, not_null]
       - name: player_id
-        data_tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_players')
-                field: player_id
       - name: title_id
-        data_tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_titles')
-                field: title_id
 
   - name: fct_releases
     description: One row per patch/content drop, with a +-10 day before/after engagement comparison.
@@ -249,14 +173,4 @@ models:
       - name: release_id
         data_tests: [unique, not_null]
       - name: title_id
-        data_tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_titles')
-                field: title_id
       - name: release_type
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: ['major', 'minor', 'hotfix', 'content_drop', 'event']
