@@ -18,7 +18,7 @@ clean-targets:
 models:
   summit_2026_hands_on_lab:
     +state:
-      lag_tolerance: "{{ '2m' }}"
+      lag_tolerance: "{{ '1m' }}"
     staging:
       +materialized: view
     intermediate:
